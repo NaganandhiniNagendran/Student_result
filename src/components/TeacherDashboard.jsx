@@ -2,8 +2,6 @@ import { useState, useEffect } from 'react';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../firebase';
 import 'bootstrap/dist/css/bootstrap.min.css';
-import { collection, addDoc, getDocs, updateDoc, doc } from 'firebase/firestore';
-import { db } from '../firebase';
 import AddStudentModal from './AddStudentModal';
 import UploadGradesTab from './UploadGradesTab';
 import ManageGradesTab from './ManageGradesTab';
