@@ -12,13 +12,14 @@ const UsersManagement = ({
 }) => {
   // Determine if we're managing college-level or department-level users
   const isDepartmentLevel = selectedDepartment && selectedYear;
-  const defaultRole = isDepartmentLevel ? 'teacher' : 'admin';
+  const defaultRole = isDepartmentLevel ? 'teacher' : 'head';
 
   const [editingUser, setEditingUser] = useState(null);
   const [userFormData, setUserFormData] = useState({
     username: '',
     password: '',
-    role: defaultRole
+    role: defaultRole,
+    canManageResults: defaultRole === 'head'
   });
   const currentUsers = isDepartmentLevel
     ? selectedDepartment[selectedYear]?.users || []
@@ -48,7 +49,8 @@ const UsersManagement = ({
                 username: userFormData.username,
                 role: userFormData.role,
                 status: 'active',
-                createdAt: new Date().toISOString().split('T')[0]
+                createdAt: new Date().toISOString().split('T')[0],
+                canManageResults: userFormData.canManageResults
               };
 
               const updatedCollege = {
@@ -58,7 +60,7 @@ const UsersManagement = ({
 
               setColleges(colleges.map(c => c.id === college.id ? updatedCollege : c));
               setSuccessMessage('User created successfully!');
-              setUserFormData({ username: '', password: '', role: 'admin' });
+              setUserFormData({ username: '', password: '', role: 'head' });
               setTimeout(() => setSuccessMessage(''), 3000);
             }} className="space-y-3">
               <div className="row">
@@ -109,7 +111,7 @@ const UsersManagement = ({
                     className="form-select"
                     required
                   >
-                    <option value="admin">Admin</option>
+                    <option value="head">Head</option>
                     <option value="teacher">Teacher</option>
                   </select>
                 </div>
@@ -215,7 +217,8 @@ const UsersManagement = ({
       username: userFormData.username,
       role: userFormData.role,
       status: 'active',
-      createdAt: editingUser ? editingUser.createdAt : new Date().toISOString().split('T')[0]
+      createdAt: editingUser ? editingUser.createdAt : new Date().toISOString().split('T')[0],
+      canManageResults: userFormData.canManageResults
     };
 
     if (isDepartmentLevel) {
@@ -256,7 +259,7 @@ const UsersManagement = ({
 
     setSuccessMessage(editingUser ? 'User updated successfully!' : 'User created successfully!');
     setEditingUser(null);
-    setUserFormData({ username: '', password: '', role: defaultRole });
+    setUserFormData({ username: '', password: '', role: defaultRole, canManageResults: defaultRole === 'head' });
     setTimeout(() => setSuccessMessage(''), 3000);
   };
 
@@ -265,7 +268,8 @@ const UsersManagement = ({
     setUserFormData({
       username: user.username,
       password: '',
-      role: user.role
+      role: user.role,
+      canManageResults: user.canManageResults || false
     });
   };
 
@@ -386,7 +390,7 @@ const UsersManagement = ({
                       <option value="teacher">Teacher</option>
                     </>
                   ) : (
-                    <option value="admin">Admin</option>
+                    <option value="head">Head</option>
                   )}
                 </select>
               </div>
@@ -407,6 +411,8 @@ const UsersManagement = ({
               />
             </div>
 
+
+
             <div className="d-flex gap-2">
               <button
                 type="submit"
@@ -419,7 +425,7 @@ const UsersManagement = ({
                   type="button"
                   onClick={() => {
                     setEditingUser(null);
-                    setUserFormData({ username: '', password: '', role: defaultRole });
+                    setUserFormData({ username: '', password: '', role: defaultRole, canManageResults: defaultRole === 'head' });
                   }}
                   className="btn btn-secondary"
                 >
@@ -447,6 +453,7 @@ const UsersManagement = ({
                 <th>Role</th>
                 <th>Status</th>
                 <th>Created At</th>
+                {!isDepartmentLevel && <th>Can Manage Results</th>}
                 <th>Actions</th>
               </tr>
             </thead>
@@ -465,6 +472,7 @@ const UsersManagement = ({
                     </span>
                   </td>
                   <td>{user.createdAt}</td>
+                  {!isDepartmentLevel && <td>{user.canManageResults ? 'Yes' : 'No'}</td>}
                   <td>
                     <button
                       onClick={() => handleEditUser(user)}

@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, LineElement, PointElement } from 'chart.js';
 import { Bar, Line } from 'react-chartjs-2';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '../firebase';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, LineElement, PointElement);
@@ -13,22 +15,28 @@ const StudentDashboard = ({ user, onLogout }) => {
   const gradesPerPage = 5;
 
   useEffect(() => {
-    // Mock data - in real app, this would be an API call
-    setTimeout(() => {
-      const mockGrades = [
-        { id: 1, subject: 'Mathematics', score: 85, date: '2024-01-15', semester: 'Fall 2024' },
-        { id: 2, subject: 'Physics', score: 78, date: '2024-01-20', semester: 'Fall 2024' },
-        { id: 3, subject: 'Chemistry', score: 92, date: '2024-01-25', semester: 'Fall 2024' },
-        { id: 4, subject: 'Biology', score: 88, date: '2024-02-01', semester: 'Fall 2024' },
-        { id: 5, subject: 'English', score: 90, date: '2024-02-05', semester: 'Fall 2024' },
-        { id: 6, subject: 'History', score: 82, date: '2024-02-10', semester: 'Fall 2024' },
-        { id: 7, subject: 'Computer Science', score: 95, date: '2024-02-15', semester: 'Fall 2024' },
-        { id: 8, subject: 'Economics', score: 76, date: '2024-02-20', semester: 'Fall 2024' },
-      ];
-      setGrades(mockGrades);
-      setLoading(false);
-    }, 1000);
-  }, []);
+    const fetchGrades = async () => {
+      try {
+        // Fetch grades for the current student
+        const gradesQuery = query(
+          collection(db, 'grades'),
+          where('studentId', '==', user.id)
+        );
+        const gradesSnapshot = await getDocs(gradesQuery);
+        const gradesData = gradesSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setGrades(gradesData);
+      } catch (error) {
+        console.error('Error fetching grades:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchGrades();
+  }, [user.id]);
 
   const indexOfLastGrade = currentPage * gradesPerPage;
   const indexOfFirstGrade = indexOfLastGrade - gradesPerPage;

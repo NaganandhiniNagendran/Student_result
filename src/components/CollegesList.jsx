@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import { collection, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
+import { db } from '../firebase';
 
-const CollegesList = ({ colleges, setColleges, setSelectedCollege, setActiveTab, successMessage, setSuccessMessage }) => {
+const CollegesList = ({ colleges, setColleges, setSelectedCollege, setActiveTab }) => {
   const [editingCollege, setEditingCollege] = useState(null);
   const [collegeFormData, setCollegeFormData] = useState({
     name: '',
@@ -10,32 +12,43 @@ const CollegesList = ({ colleges, setColleges, setSelectedCollege, setActiveTab,
     domain: ''
   });
 
-  const handleCollegeSubmit = (e) => {
+  const handleCollegeSubmit = async (e) => {
     e.preventDefault();
 
-    const newCollege = {
-      id: editingCollege ? editingCollege.id : Date.now(),
-      name: collegeFormData.name,
-      code: collegeFormData.code,
-      description: collegeFormData.description,
-      location: collegeFormData.location,
-      domain: collegeFormData.domain,
-      users: editingCollege ? editingCollege.users : [],
-      subjects: editingCollege ? editingCollege.subjects : [],
-      departments: editingCollege ? editingCollege.departments : []
-    };
+    try {
+      const collegeData = {
+        name: collegeFormData.name,
+        code: collegeFormData.code,
+        description: collegeFormData.description,
+        location: collegeFormData.location,
+        domain: collegeFormData.domain,
+        users: editingCollege ? editingCollege.users : [],
+        subjects: editingCollege ? editingCollege.subjects : [],
+        departments: editingCollege ? editingCollege.departments : []
+      };
 
-    if (editingCollege) {
-      setColleges(colleges.map(c => c.id === editingCollege.id ? newCollege : c));
-      setSuccessMessage('College updated successfully!');
-      setEditingCollege(null);
-    } else {
-      setColleges([...colleges, newCollege]);
-      setSuccessMessage('College created successfully!');
+      if (editingCollege) {
+        // Update existing college in Firebase
+        const collegeRef = doc(db, 'colleges', editingCollege.id);
+        await updateDoc(collegeRef, collegeData);
+
+        // Update local state
+        setColleges(colleges.map(c => c.id === editingCollege.id ? { ...collegeData, id: editingCollege.id } : c));
+        setEditingCollege(null);
+      } else {
+        // Add new college to Firebase
+        const docRef = await addDoc(collection(db, 'colleges'), collegeData);
+
+        // Update local state with the new document ID
+        const newCollege = { ...collegeData, id: docRef.id };
+        setColleges([...colleges, newCollege]);
+      }
+
+      setCollegeFormData({ name: '', code: '', description: '', location: '', domain: '' });
+    } catch (error) {
+      console.error('Error saving college:', error);
+      alert('Error saving college. Please try again.');
     }
-
-    setCollegeFormData({ name: '', code: '', description: '', location: '', domain: '' });
-    setTimeout(() => setSuccessMessage(''), 3000);
   };
 
   const handleEditCollege = (college) => {
@@ -50,11 +63,19 @@ const CollegesList = ({ colleges, setColleges, setSelectedCollege, setActiveTab,
     setActiveTab('colleges-list');
   };
 
-  const handleDeleteCollege = (collegeId) => {
+  const handleDeleteCollege = async (collegeId) => {
     if (window.confirm('Are you sure you want to delete this college?')) {
-      setColleges(colleges.filter(c => c.id !== collegeId));
-      setSuccessMessage('College deleted successfully!');
-      setTimeout(() => setSuccessMessage(''), 3000);
+      try {
+        // Delete from Firebase
+        const collegeRef = doc(db, 'colleges', collegeId);
+        await deleteDoc(collegeRef);
+
+        // Update local state
+        setColleges(colleges.filter(c => c.id !== collegeId));
+      } catch (error) {
+        console.error('Error deleting college:', error);
+        alert('Error deleting college. Please try again.');
+      }
     }
   };
 

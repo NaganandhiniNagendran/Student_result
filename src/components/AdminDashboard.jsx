@@ -1,25 +1,38 @@
 import { useState, useEffect } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '../firebase';
 import CollegesList from './CollegesList';
 import UsersManagement from './UsersManagement';
 import DepartmentsManagement from './DepartmentsManagement';
+import ResultsManagement from './ResultsManagement';
 
 const AdminDashboard = ({ user, onLogout }) => {
   const [activeTab, setActiveTab] = useState('colleges-list');
   const [selectedCollege, setSelectedCollege] = useState(null);
   const [colleges, setColleges] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [successMessage, setSuccessMessage] = useState('');
+  const loading = false;
+
   const [selectedDepartment, setSelectedDepartment] = useState(null);
   const [selectedYear, setSelectedYear] = useState('year1');
 
   useEffect(() => {
-    // TODO: Fetch colleges data from API
-    // Example: fetch('/api/colleges').then(res => res.json()).then(data => setColleges(data));
-    setLoading(false);
+    const fetchColleges = async () => {
+      try {
+        const collegesCollection = collection(db, 'colleges');
+        const collegesSnapshot = await getDocs(collegesCollection);
+        const collegesData = collegesSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setColleges(collegesData);
+      } catch (error) {
+        console.error('Error fetching colleges:', error);
+      }
+    };
+
+    fetchColleges();
   }, []);
-
-
 
   if (loading) {
     return (
@@ -55,13 +68,6 @@ const AdminDashboard = ({ user, onLogout }) => {
       </header>
 
       <main className="container py-4">
-        {/* Success Message */}
-        {successMessage && (
-          <div className="alert alert-success" role="alert">
-            {successMessage}
-          </div>
-        )}
-
         {/* Navigation Tabs */}
         <div className="mb-4">
           <ul className="nav nav-tabs">
@@ -76,6 +82,16 @@ const AdminDashboard = ({ user, onLogout }) => {
                 Colleges
               </button>
             </li>
+            {user.collegeId && (
+              <li className="nav-item">
+                <button
+                  onClick={() => setActiveTab('results')}
+                  className={`nav-link ${activeTab === 'results' ? 'active' : ''}`}
+                >
+                  Results
+                </button>
+              </li>
+            )}
           </ul>
           {selectedCollege && (
             <div className="mt-3">
@@ -97,6 +113,16 @@ const AdminDashboard = ({ user, onLogout }) => {
                     Department Management
                   </button>
                 </li>
+                {(user.role === 'admin' || user.role === 'head') && (
+                  <li className="nav-item">
+                    <button
+                      onClick={() => setActiveTab('colleges-results')}
+                      className={`nav-link ${activeTab === 'colleges-results' ? 'active' : ''}`}
+                    >
+                      Results
+                    </button>
+                  </li>
+                )}
               </ul>
             </div>
           )}
@@ -144,8 +170,6 @@ const AdminDashboard = ({ user, onLogout }) => {
             setColleges={setColleges}
             setSelectedCollege={setSelectedCollege}
             setActiveTab={setActiveTab}
-            successMessage={successMessage}
-            setSuccessMessage={setSuccessMessage}
           />
         )}
 
@@ -155,7 +179,6 @@ const AdminDashboard = ({ user, onLogout }) => {
             selectedCollege={selectedCollege}
             setColleges={setColleges}
             colleges={colleges}
-            setSuccessMessage={setSuccessMessage}
             setSelectedCollege={setSelectedCollege}
           />
         )}
@@ -166,7 +189,6 @@ const AdminDashboard = ({ user, onLogout }) => {
             selectedCollege={selectedCollege}
             setColleges={setColleges}
             colleges={colleges}
-            setSuccessMessage={setSuccessMessage}
           />
         )}
 
@@ -176,7 +198,6 @@ const AdminDashboard = ({ user, onLogout }) => {
             selectedCollege={selectedCollege}
             setColleges={setColleges}
             colleges={colleges}
-            setSuccessMessage={setSuccessMessage}
             setSelectedCollege={setSelectedCollege}
             setSelectedDepartment={setSelectedDepartment}
             setSelectedYear={setSelectedYear}
@@ -192,9 +213,24 @@ const AdminDashboard = ({ user, onLogout }) => {
             selectedYear={selectedYear}
             setColleges={setColleges}
             colleges={colleges}
-            setSuccessMessage={setSuccessMessage}
             setSelectedCollege={setSelectedCollege}
             setSelectedDepartment={setSelectedDepartment}
+          />
+        )}
+
+        {/* Results Management */}
+        {activeTab === 'colleges-results' && (
+          <ResultsManagement
+            selectedCollege={selectedCollege}
+            user={user}
+          />
+        )}
+
+        {/* College-Level Admin Results Management */}
+        {activeTab === 'results' && (
+          <ResultsManagement
+            selectedCollege={colleges.find(college => college.id === user.collegeId)}
+            user={user}
           />
         )}
 

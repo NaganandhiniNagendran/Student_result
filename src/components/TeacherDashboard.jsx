@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
+import { db } from '../firebase';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
 const TeacherDashboard = ({ user, onLogout }) => {
@@ -75,39 +77,53 @@ const TeacherDashboard = ({ user, onLogout }) => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
 
-    const newGrade = {
-      id: editingGrade ? editingGrade.id : Date.now(),
-      studentId: formData.studentId,
-      studentName: students.find(s => s.id === formData.studentId)?.name,
-      subject: formData.subject,
-      score: parseInt(formData.score),
-      date: formData.date
-    };
+    try {
+      const gradeData = {
+        studentId: formData.studentId,
+        studentName: students.find(s => s.id === formData.studentId)?.name,
+        subject: formData.subject,
+        score: parseInt(formData.score),
+        date: formData.date
+      };
 
-    if (editingGrade) {
-      setGrades(grades.map(g => g.id === editingGrade.id ? newGrade : g));
-      setSuccessMessage('Grade updated successfully!');
-      setEditingGrade(null);
-    } else {
-      setGrades([...grades, newGrade]);
-      setSuccessMessage('Grade uploaded successfully!');
+      if (editingGrade) {
+        // Update existing grade in Firebase
+        const gradeRef = doc(db, 'grades', editingGrade.id);
+        await updateDoc(gradeRef, gradeData);
+
+        // Update local state
+        setGrades(grades.map(g => g.id === editingGrade.id ? { ...gradeData, id: editingGrade.id } : g));
+        setSuccessMessage('Grade updated successfully!');
+        setEditingGrade(null);
+      } else {
+        // Add new grade to Firebase
+        const docRef = await addDoc(collection(db, 'grades'), gradeData);
+
+        // Update local state with the new document ID
+        const newGrade = { ...gradeData, id: docRef.id };
+        setGrades([...grades, newGrade]);
+        setSuccessMessage('Grade uploaded successfully!');
+      }
+
+      setFormData({
+        studentId: '',
+        subject: '',
+        score: '',
+        date: new Date().toISOString().split('T')[0]
+      });
+
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (error) {
+      console.error('Error saving grade:', error);
+      alert('Error saving grade. Please try again.');
     }
-
-    setFormData({
-      studentId: '',
-      subject: '',
-      score: '',
-      date: new Date().toISOString().split('T')[0]
-    });
-    
-    setTimeout(() => setSuccessMessage(''), 3000);
   };
 
   const handleEdit = (grade) => {
@@ -121,11 +137,21 @@ const TeacherDashboard = ({ user, onLogout }) => {
     setActiveTab('upload');
   };
 
-  const handleDelete = (gradeId) => {
+  const handleDelete = async (gradeId) => {
     if (window.confirm('Are you sure you want to delete this grade?')) {
-      setGrades(grades.filter(g => g.id !== gradeId));
-      setSuccessMessage('Grade deleted successfully!');
-      setTimeout(() => setSuccessMessage(''), 3000);
+      try {
+        // Delete from Firebase
+        const gradeRef = doc(db, 'grades', gradeId);
+        await deleteDoc(gradeRef);
+
+        // Update local state
+        setGrades(grades.filter(g => g.id !== gradeId));
+        setSuccessMessage('Grade deleted successfully!');
+        setTimeout(() => setSuccessMessage(''), 3000);
+      } catch (error) {
+        console.error('Error deleting grade:', error);
+        alert('Error deleting grade. Please try again.');
+      }
     }
   };
 
